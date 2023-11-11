@@ -48,4 +48,41 @@ def get_embedder(multires, input_dims=3):
 
     embedder_obj = Embedder(**embed_kwargs)
     def embed(x, eo=embedder_obj): return eo.embed(x)
+    # 这返回的就是一个embed，然后一个out_dim
     return embed, embedder_obj.out_dim
+
+# import torch
+
+################################
+#      hash embedding          #
+################################
+
+import numpy as np
+import tinycudann as tcnn
+
+
+def get_encoder(input_dim=3,
+                degree=4, n_bins=16, n_frequencies=12,
+                n_levels=16, level_dim=2, 
+                base_resolution=16, log2_hashmap_size=19, 
+                desired_resolution=512):
+    
+    # Sparse grid encoding
+    # 我们先只保留hash的部分
+    print('Hash size', log2_hashmap_size)
+    per_level_scale = np.exp2(np.log2(desired_resolution  / base_resolution) / (n_levels - 1))
+    embed = tcnn.Encoding(
+        n_input_dims=input_dim,
+        encoding_config={
+            "otype": 'HashGrid',
+            "n_levels": n_levels,
+            "n_features_per_level": level_dim,
+            "log2_hashmap_size": log2_hashmap_size,
+            "base_resolution": base_resolution,
+            "per_level_scale": per_level_scale
+        },
+        dtype=torch.float
+    )
+    out_dim = embed.n_output_dims
+
+    return embed, out_dim

@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from utils.embedder import get_embedder
+from utils.embedder import get_encoder
 
 
 # This implementation is borrowed from NR-NeRF: https://github.com/facebookresearch/nonrigid_nerf
@@ -556,7 +557,8 @@ class SDFNetwork(nn.Module):
         self.embed_fn_fine = None
 
         if multires > 0:
-            embed_fn, input_ch = get_embedder(multires, input_dims=d_in)
+            # embed_fn, input_ch = get_embedder(multires, input_dims=d_in)
+            embed_fn, input_ch = get_encoder(log2_hashmap_size=16)
             self.embed_fn_fine = embed_fn
             dims[0] = input_ch
 
@@ -602,7 +604,17 @@ class SDFNetwork(nn.Module):
     def forward(self, inputs):
         inputs = inputs * self.scale
         if self.embed_fn_fine is not None:
-            inputs = self.embed_fn_fine(inputs)
+
+            # __import__('ipdb').set_trace()
+            # 除的一定得是定死的值
+            min_vals = -5.0 # torch.min(torch.min(inputs, dim=0)[0])
+            max_vals = 7.0 # torch.max(torch.max(inputs, dim=0)[0])
+            # print("min:{}, max:{}".format(min_vals, max_vals))
+            normalized_inputs = (inputs - min_vals) / (max_vals - min_vals)
+            # 加断言确保大于0小于1
+            assert((normalized_inputs >= 0).all())
+            assert((normalized_inputs <= 1).all())
+            inputs = self.embed_fn_fine(normalized_inputs)
 
         x = inputs
         for l in range(0, self.num_layers - 1):
@@ -725,6 +737,7 @@ class NeRF(nn.Module):
         self.embed_fn_view = None
 
         if multires > 0:
+            # NeRF的先不加
             embed_fn, input_ch = get_embedder(multires, input_dims=d_in)
             self.embed_fn = embed_fn
             self.input_ch = input_ch

@@ -96,6 +96,9 @@ class Runner:
         # Networks
         params_to_train = []
         self.nerf_outside = NeRF(**self.conf['model.nerf']).to(self.device)
+
+        # __import__('ipdb').set_trace()
+
         self.sdf_network = SDFNetwork(**self.conf['model.sdf_network']).to(self.device)
         self.deviation_network = SingleVarianceNetwork(**self.conf['model.variance_network']).to(self.device)
         self.color_network = RenderingNetwork(**self.conf['model.rendering_network']).to(self.device)
@@ -103,6 +106,9 @@ class Runner:
         params_to_train += list(self.sdf_network.parameters())
         params_to_train += list(self.deviation_network.parameters())
         params_to_train += list(self.color_network.parameters())
+
+        params_to_train += list(self.sdf_network.embed_fn_fine.parameters())
+
 
         self.bending_network = None
         if 'model.bending_network' in self.conf:
